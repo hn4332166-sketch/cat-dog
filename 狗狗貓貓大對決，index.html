@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#120c1f">
+<title>貓狗情境情緒拉鋸戰</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #120c1f;
+  --panel: rgba(26, 18, 43, 0.85);
+  --cat-pink: #ff5e97;
+  --cat-glow: #ff2d75;
+  --dog-amber: #ffaa00;
+  --dog-glow: #ff8800;
+  --gold: #ffe600;
+  --text: #ffffff;
+  --muted: #a093b8;
+  --border-cat: rgba(255, 94, 151, 0.4);
+  --border-dog: rgba(255, 170, 0, 0.4);
+}
+
+* { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+
+body {
+  margin: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: background 0.5s ease;
+}
+
+.app {
+  flex: 1;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: env(safe-area-inset-top, 10px) 14px env(safe-area-inset-bottom, 14px) 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  z-index: 2;
+}
+
+header {
+  text-align: center;
+  padding: 2px 0;
+}
+
+.eyebrow {
+  color: var(--cat-pink);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 2px 0;
+  font-size: 20px;
+  letter-spacing: 1px;
+  background: linear-gradient(90deg, var(--cat-pink), var(--gold), var(--dog-amber));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 貓狗情境與情緒抬頭顯示 */
+.scores {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 8px;
+  align-items: center;
+  margin: 4px 0;
+}
+
+.side {
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: var(--panel);
+  border: 1.5px solid var(--border-cat);
+  box-shadow: 0 4px 15px rgba(255, 45, 117, 0.15);
+  transition: all 0.3s ease;
+}
+
+.side.dog-side {
+  text-align: right;
+  border-color: var(--border-dog);
+  box-shadow: 0 4px 15px rgba(255, 136, 0, 0.15);
+}
+
+.side-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.dog-side .side-header { justify-content: flex-end; }
+
+.emotion-tag {
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  margin-top: 2px;
+  display: inline-block;
+  font-weight: 800;
+}
+
+.percent {
+  font-size: 26px;
+  font-weight: 1000;
+  line-height: 1.1;
+  font-family: monospace;
+  transition: font-size 0.2s ease;
+}
+
+.cat-side .percent { color: var(--cat-pink); text-shadow: 0 0 12px var(--cat-glow); }
+.dog-side .percent { color: var(--dog-amber); text-shadow: 0 0 12px var(--dog-glow); }
+
+.vs-badge {
+  font-size: 11px;
+  font-weight: 900;
+  color: var(--gold);
+  background: rgba(0,0,0,0.5);
+  padding: 4px 6px;
+  border-radius: 50%;
+  border: 1px solid var(--gold);
+}
+
+/* 戰場 Canvas 區域 */
+.arena-container {
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 18px;
+  background: rgba(10, 5, 20, 0.9);
+  box-shadow: inset 0 0 25px rgba(0,0,0,0.8);
+  overflow: hidden;
+  position: relative;
+  margin: 4px 0;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 145px;
+}
+
+.directions {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+/* 浮誇情境提示欄 */
+.status {
+  text-align: center;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1.5px solid var(--gold);
+  border-radius: 12px;
+  background: rgba(30, 20, 10, 0.8);
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 12px rgba(255, 230, 0, 0.2);
+  margin: 4px 0;
+  line-height: 1.3;
+}
+
+.control-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.moves {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.move {
+  height: 68px;
+  background: linear-gradient(145deg, #241738, #150c24);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: all 0.12s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.move .glyph {
+  font-size: 24px;
+}
+
+.move .label {
+  font-size: 11px;
+  font-weight: 900;
+  color: var(--gold);
+}
+
+.move small {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.move.active {
+  border-color: var(--cat-pink);
+  background: linear-gradient(145deg, #3d1c33, #1f0b18);
+  box-shadow: 0 0 15px var(--cat-glow);
+  transform: translateY(-2px) scale(1.02);
+}
+
+.move:active { transform: scale(0.95); }
+
+.actions {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 8px;
+}
+
+.action {
+  height: 46px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  font-weight: 900;
+  font-size: 13px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.action.primary {
+  background: linear-gradient(135deg, var(--cat-pink), var(--dog-amber));
+  color: #000;
+  border: none;
+  font-size: 14px;
+  box-shadow: 0 0 20px rgba(255, 170, 0, 0.4);
+}
+
+.action:active { transform: scale(0.97); }
+
+/* 漂浮表情包彈窗 */
+.emoji-pop {
+  position: absolute;
+  font-size: 32px;
+  pointer-events: none;
+  animation: floatUp 0.8s ease-out forwards;
+  z-index: 5;
+}
+
+@keyframes floatUp {
+  0% { opacity: 1; transform: translate(-50%, 0) scale(0.5); }
+  50% { transform: translate(-50%, -30px) scale(1.3); }
+  100% { opacity: 0; transform: translate(-50%, -60px) scale(1); }
+}
+
+/* 結算畫面 */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: none;
+  place-items: center;
+  padding: 20px;
+  background: rgba(18, 12, 31, 0.95);
+  backdrop-filter: blur(12px);
+}
+
+.overlay.show { display: grid; }
+
+.result-card {
+  width: min(380px, 100%);
+  padding: 30px 20px;
+  text-align: center;
+  border: 2px solid var(--gold);
+  border-radius: 20px;
+  background: linear-gradient(145deg, #241638, #0e0717);
+  box-shadow: 0 0 50px rgba(255, 230, 0, 0.3);
+}
+
+.result-card h2 {
+  margin: 12px 0;
+  font-size: 36px;
+  letter-spacing: 2px;
+}
+
+.result-card p {
+  color: var(--muted);
+  margin-bottom: 20px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+</style>
+</head>
+<body>
+
+<main class="app" id="app">
+  <header>
+    <div class="eyebrow">EMOTIONAL TUG-OF-WAR</div>
+    <h1>貓狗情境情緒拉鋸戰</h1>
+  </header>
+
+  <section class="scores">
+    <div class="side cat-side" id="catCard">
+      <div class="side-header">🐱 貓喵陣營 [PLAYER]</div>
+      <div class="percent" id="catScore">50%</div>
+      <div class="emotion-tag" id="catEmotion">😾 蓄勢待發</div>
+    </div>
+    <div class="vs-badge">VS</div>
+    <div class="side dog-side" id="dogCard">
+      <div class="side-header">[AI] 汪汪陣營 🐶</div>
+      <div class="percent" id="dogScore">50%</div>
+      <div class="emotion-tag" id="dogEmotion">🐶 歪頭警戒</div>
+    </div>
+  </section>
+
+  <div class="arena-container" id="arena">
+    <canvas id="canvas"></canvas>
+  </div>
+  <div class="directions"><span>◀ 貓喵肉墊推進</span><span>汪汪狂暴反擊 ▶</span></div>
+
+  <div class="status" id="status">
+    喵！選擇你的戰術指令，壓制那隻傻狗！
+  </div>
+
+  <div class="control-zone">
+    <section class="moves">
+      <button class="move active" data-move="rock">
+        <span class="glyph">🐾</span>
+        <span class="label">肉墊攻擊</span>
+        <small>ROCK [1]</small>
+      </button>
+      <button class="move" data-move="scissors">
+        <span class="glyph">🐱</span>
+        <span class="label">喵爪飛擊</span>
+        <small>SCISSORS [2]</small>
+      </button>
+      <button class="move" data-move="paper">
+        <span class="glyph">🪵</span>
+        <span class="label">貓抓板牆</span>
+        <small>PAPER [3]</small>
+      </button>
+    </section>
+
+    <div class="actions">
+      <button class="action primary" id="fight">⚡ 發動攻擊！(喵！)</button>
+      <button class="action" id="reset">↻ 重置</button>
+    </div>
+  </div>
+</main>
+
+<div class="overlay" id="overlay">
+  <div class="result-card">
+    <div style="font-size: 50px;" id="resultEmoji">🏆</div>
+    <h2 id="resultTitle" style="color: var(--gold);">貓喵大獲全勝！</h2>
+    <p id="resultText">汪汪被抓得滿臉抓痕，夾著尾巴逃跑了！</p>
+    <button class="action primary" id="again" style="width: 100%; height: 48px;">再戰一局 ↻</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* Web Audio API 純代碼聲音生成器 (貓叫與狗吠音效) */
+  let audioCtx = null;
+
+  function initAudio() {
+    if (!audioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioContext();
+    }
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume();
+    }
+  }
+
+  // 純代碼合成貓咪叫聲 (Meow)
+  function playMeow(pitchShift = 1.0, duration = 0.35, isAngry = false) {
+    initAudio();
+    if (!audioCtx) return;
+
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = isAngry ? "sawtooth" : "sine";
+
+    // 貓叫的經典頻率彎音 (從中頻升到高頻再微降)
+    const startFreq = 450 * pitchShift;
+    const peakFreq = (isAngry ? 900 : 750) * pitchShift;
+    const endFreq = 350 * pitchShift;
+
+    osc.frequency.setValueAtTime(startFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(peakFreq, now + duration * 0.4);
+    osc.frequency.exponentialRampToValueAtTime(endFreq, now + duration);
+
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.linearRampToValueAtTime(0.3, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start(now);
+    osc.stop(now + duration);
+  }
+
+  // 純代碼合成狗吠聲 (Bark)
+  function playBark(pitchShift = 1.0, isFierce = false) {
+    initAudio();
+    if (!audioCtx) return;
+
+    const now = audioCtx.currentTime;
+    const duration = isFierce ? 0.22 : 0.15;
+
+    // 吠聲基礎頻率
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = isFierce ? "triangle" : "sawtooth";
+
+    const baseFreq = (isFierce ? 130 : 200) * pitchShift;
+    osc.frequency.setValueAtTime(baseFreq * 2, now);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq, now + duration);
+
+    // 加一點雜訊讓狗吠更有爆破感
+    const bufferSize = audioCtx.sampleRate * duration;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.setValueAtTime(0.2, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+
+    gain.gain.setValueAtTime(0.4, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+
+    osc.connect(gain);
+    noise.connect(noiseGain);
+    gain.connect(audioCtx.destination);
+    noiseGain.connect(audioCtx.destination);
+
+    osc.start(now);
+    noise.start(now);
+    osc.stop(now + duration);
+    noise.stop(now + duration);
+  }
+
+  // 平手撞擊聲
+  function playClashSound() {
+    initAudio();
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(120, now);
+    osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.15);
+  }
+
+  const $ = id => document.getElementById(id);
+  const canvas = $("canvas");
+  const ctx = canvas.getContext("2d");
+  const buttons = [...document.querySelectorAll(".move")];
+
+  const MOVES = ["rock", "scissors", "paper"];
+  const BEATS = { rock: "scissors", scissors: "paper", paper: "rock" };
+
+  const CAT_EMOTIONS = [
+    { threshold: 90, text: "😼 傲視群雄 (女王俯瞰)", color: "#ff2d75" },
+    { threshold: 70, text: "😾 炸毛得勢 (極度囂張)", color: "#ff5e97" },
+    { threshold: 50, text: "🐱 蓄勢待發 (眼神鎖定)", color: "#ff85ad" },
+    { threshold: 30, text: "🙀 驚慌失措 (飛機耳)", color: "#a093b8" },
+    { threshold: 0,  text: "😿 委屈巴巴 (眼角帶淚)", color: "#665e75" }
+  ];
+
+  const DOG_EMOTIONS = [
+    { threshold: 90, text: "🐺 狂暴神犬 (拆家模式)", color: "#ff8800" },
+    { threshold: 70, text: "🐕 瘋狂搖尾 (氣勢如虹)", color: "#ffaa00" },
+    { threshold: 50, text: "🐶 歪頭警戒 (等待指令)", color: "#ffc44d" },
+    { threshold: 30, text: "🐕‍🦺 困惑嗚嗚 (狗狗打呼)", color: "#a093b8" },
+    { threshold: 0,  text: "🐩 夾尾求饒 (可憐兮兮)", color: "#665e75" }
+  ];
+
+  const state = {
+    cat: 50,
+    dog: 50,
+    selected: "rock",
+    round: 0,
+    ended: false,
+    ballPos: 0.5,
+    particles: [],
+    flash: 0,
+    winner: null
+  };
+
+  let W = 400, H = 145, DPR = 1, animId = 0;
+
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    W = Math.max(100, rect.width);
+    H = Math.max(80, rect.height);
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+
+  function chooseMove(move) {
+    if (!MOVES.includes(move)) return;
+    state.selected = move;
+    buttons.forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.move === move);
+    });
+  }
+
+  function getEmotion(score, emotionArray) {
+    return emotionArray.find(e => score >= e.threshold) || emotionArray[emotionArray.length - 1];
+  }
+
+  function updateUI() {
+    $("catScore").textContent = state.cat + "%";
+    $("dogScore").textContent = state.dog + "%";
+
+    // 動態字體縮放
+    $("catScore").style.fontSize = (22 + state.cat * 0.24) + "px";
+    $("dogScore").style.fontSize = (22 + state.dog * 0.24) + "px";
+
+    // 情緒標籤更新
+    const catE = getEmotion(state.cat, CAT_EMOTIONS);
+    const dogE = getEmotion(state.dog, DOG_EMOTIONS);
+
+    $("catEmotion").textContent = catE.text;
+    $("catEmotion").style.color = catE.color;
+
+    $("dogEmotion").textContent = dogE.text;
+    $("dogEmotion").style.color = dogE.color;
+
+    // 情境背景動態色調微調 (隨優勢改變氛圍)
+    if (state.cat > 60) {
+      document.body.style.background = "radial-gradient(circle at 20% 30%, #380d28 0%, #120c1f 80%)";
+    } else if (state.dog > 60) {
+      document.body.style.background = "radial-gradient(circle at 80% 30%, #38240d 0%, #120c1f 80%)";
+    } else {
+      document.body.style.background = "#120c1f";
+    }
+  }
+
+  function spawnEmojiPop(x, y, emoji) {
+    const el = document.createElement("div");
+    el.className = "emoji-pop";
+    el.textContent = emoji;
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    $("app").appendChild(el);
+    setTimeout(() => el.remove(), 800);
+  }
+
+  function spawnParticles(x, y, color, count = 25) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1.5 + Math.random() * 4.5;
+      state.particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 20 + Math.random() * 25,
+        maxLife: 45,
+        size: 2 + Math.random() * 3,
+        color
+      });
+    }
+    if (state.particles.length > 200) state.particles.splice(0, state.particles.length - 200);
+  }
+
+  function playRound() {
+    if (state.ended) return;
+
+    state.round++;
+    const dogMove = MOVES[Math.floor(Math.random() * MOVES.length)];
+    const catMove = state.selected;
+    const status = $("status");
+    const arenaRect = $("arena").getBoundingClientRect();
+    const appRect = $("app").getBoundingClientRect();
+    const midX = arenaRect.left - appRect.left + (arenaRect.width * state.ballPos);
+    const midY = arenaRect.top - appRect.top + arenaRect.height / 2;
+
+    if (catMove === dogMove) {
+      status.textContent = `第 ${state.round} 回合｜貓咪與狗狗同時出手！爪墊相撞！勢均力敵！`;
+      playClashSound();
+      spawnEmojiPop(midX, midY, "⚡");
+      spawnParticles(W * state.ballPos, H / 2, "#ffe600", 15);
+    } else if (BEATS[catMove] === dogMove) {
+      state.cat = Math.min(100, state.cat + 8);
+      state.dog = 100 - state.cat;
+
+      status.textContent = `第 ${state.round} 回合｜貓喵出手精準！抓傷狗狗鼻頭！推進 +8%！`;
+
+      // 貓勝動態聲音：貓喵高昂（高音調），狗哀鳴
+      const pitch = 0.8 + (state.cat / 100) * 0.6;
+      playMeow(pitch, 0.4, state.cat > 70);
+      spawnEmojiPop(midX, midY, "😾");
+      spawnParticles(W * state.ballPos, H / 2, "#ff2d75", 35);
+    } else {
+      state.dog = Math.min(100, state.dog + 8);
+      state.cat = 100 - state.dog;
+
+      status.textContent = `第 ${state.round} 回合｜狗狗發瘋狂吠！將貓喵逼退！汪汪推進 +8%！`;
+
+      // 狗勝動態聲音：狗吠兇猛（低沉爆音），貓慘叫
+      const dogPitch = 0.7 + (state.dog / 100) * 0.5;
+      playBark(dogPitch, state.dog > 70);
+      spawnEmojiPop(midX, midY, "🐶");
+      spawnParticles(W * state.ballPos, H / 2, "#ff8800", 35);
+    }
+
+    state.flash = 1;
+    updateUI();
+
+    if (state.cat >= 100 || state.dog >= 100) {
+      finishMatch(state.cat >= 100 ? "cat" : "dog");
+    }
+  }
+
+  function finishMatch(winner) {
+    state.ended = true;
+    state.winner = winner;
+    const catWon = winner === "cat";
+
+    if (catWon) {
+      // 貓咪勝利超長狂暴連喵
+      playMeow(1.3, 0.6, true);
+      setTimeout(() => playMeow(1.5, 0.4, false), 300);
+    } else {
+      // 狗狗勝利連吠
+      playBark(0.9, true);
+      setTimeout(() => playBark(1.1, true), 200);
+    }
+
+    $("resultEmoji").textContent = catWon ? "👑🐱" : "👑🐶";
+    $("resultTitle").textContent = catWon ? "貓喵王者稱霸！" : "狂暴汪汪拆家勝！";
+    $("resultTitle").style.color = catWon ? "var(--cat-pink)" : "var(--dog-amber)";
+    $("resultText").textContent = catWon
+      ? "貓咪以 100% 絕對優勢將狗狗徹底抓服，主子地位不可動搖！"
+      : "狗狗戰力爆表拆毀防線，貓咪被迫躲進沙發底下求和！";
+
+    $("status").textContent = catWon ? "【終局】貓喵完全征服！" : "【終局】汪汪狂暴勝利！";
+    $("overlay").classList.add("show");
+    spawnParticles(W / 2, H / 2, catWon ? "#ff2d75" : "#ff8800", 80);
+  }
+
+  function resetGame() {
+    state.cat = 50;
+    state.dog = 50;
+    state.round = 0;
+    state.ended = false;
+    state.ballPos = 0.5;
+    state.particles = [];
+    state.flash = 0;
+    state.winner = null;
+
+    $("status").textContent = "喵！選擇你的戰術指令，壓制那隻傻狗！";
+    $("overlay").classList.remove("show");
+    chooseMove("rock");
+    updateUI();
+  }
+
+  function getSPoint(t) {
+    return {
+      x: 20 + t * (W - 40),
+      y: H / 2 + Math.sin(t * Math.PI * 2) * (H * 0.22)
+    };
+  }
+
+  function drawTrackSegment(from, tTo, color, width, glow = 0) {
+    ctx.beginPath();
+    let first = true;
+    for (let i = 0; i <= 80; i++) {
+      const t = from + (tTo - from) * (i / 80);
+      const p = getSPoint(t);
+      if (first) { ctx.moveTo(p.x, p.y); first = false; }
+      else { ctx.lineTo(p.x, p.y); }
+    }
+    ctx.lineCap = "round";
+    ctx.lineWidth = width;
+    ctx.strokeStyle = color;
+    if (glow > 0) { ctx.shadowColor = color; ctx.shadowBlur = glow; }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  function renderFrame() {
+    ctx.clearRect(0, 0, W, H);
+
+    // 軌道底色
+    drawTrackSegment(0, 1, "#241738", 12);
+
+    // 貓狗動態戰力領域
+    const split = state.cat / 100;
+    drawTrackSegment(0, split, "#ff2d75", 5, 10);
+    drawTrackSegment(split, 1, "#ff8800", 5, 10);
+
+    // 背景動態漢字「貓」與「狗」（隨戰力動態膨脹與高亮）
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const catFontSize = 20 + state.cat * 0.4;
+    ctx.font = `1000 ${catFontSize}px sans-serif`;
+    ctx.fillStyle = `rgba(255, 45, 117, ${0.25 + state.cat / 150})`;
+    ctx.shadowColor = "#ff2d75";
+    ctx.shadowBlur = state.cat * 0.25;
+    ctx.fillText("貓", W * 0.18, H * 0.32);
+    ctx.shadowBlur = 0;
+
+    const dogFontSize = 20 + state.dog * 0.4;
+    ctx.font = `1000 ${dogFontSize}px sans-serif`;
+    ctx.fillStyle = `rgba(255, 136, 0, ${0.25 + state.dog / 150})`;
+    ctx.shadowColor = "#ff8800";
+    ctx.shadowBlur = state.dog * 0.25;
+    ctx.fillText("狗", W * 0.82, H * 0.68);
+    ctx.shadowBlur = 0;
+
+    // 中央貓毛線球/動能核心球體位移
+    const targetBall = 0.12 + (state.cat / 100) * 0.76;
+    state.ballPos += (targetBall - state.ballPos) * 0.12;
+    const pt = getSPoint(state.ballPos);
+    const r = 12 + state.flash * 4;
+
+    // 毛線球圖案畫法
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = state.cat >= state.dog ? "#ff2d75" : "#ff8800";
+    ctx.fill();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 毛線球紋理
+    ctx.beginPath();
+    ctx.arc(pt.x - r * 0.2, pt.y - r * 0.2, r * 0.6, 0, Math.PI);
+    ctx.strokeStyle = "rgba(255,255,255,0.7)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // 粒子系統更新
+    state.particles = state.particles.filter(p => p.life > 0);
+    for (const p of state.particles) {
+      ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life--;
+    }
+    ctx.globalAlpha = 1;
+    state.flash *= 0.82;
+
+    animId = requestAnimationFrame(renderFrame);
+  }
+
+  buttons.forEach(btn => {
+    btn.addEventListener("click", () => chooseMove(btn.dataset.move));
+  });
+
+  $("fight").addEventListener("click", playRound);
+  $("reset").addEventListener("click", resetGame);
+  $("again").addEventListener("click", resetGame);
+
+  window.addEventListener("keydown", e => {
+    const key = e.key;
+    const idx = MOVES.indexOf(state.selected);
+    if (key === "ArrowLeft") chooseMove(MOVES[(idx + 2) % 3]);
+    else if (key === "ArrowRight") chooseMove(MOVES[(idx + 1) % 3]);
+    else if (key === "ArrowUp" || key === "Enter" || key === " ") playRound();
+    else if (key.toLowerCase() === "r") resetGame();
+    else if (key === "1") chooseMove("rock");
+    else if (key === "2") chooseMove("scissors");
+    else if (key === "3") chooseMove("paper");
+  });
+
+  window.addEventListener("resize", resizeCanvas, { passive: true });
+  resizeCanvas();
+  updateUI();
+  if (!animId) animId = requestAnimationFrame(renderFrame);
+})();
+</script>
+</body>
+</html>
+```
+
+### 🎮 這個升級版本包含以下重點特色：
+
+1. **純 Code Web Audio 貓狗聲音引擎**：
+   - 完全不需要載入外部 MP3 檔案，利用 Web Audio API 即時合成貓咪的「喵喵聲」與狗狗的「汪汪聲」。
+   - **動態音調變化**：當貓咪得分優勢時，喵叫聲會變得高亢、尖銳且帶有炸毛感；狗狗優勢時則會發出低沉狂暴的爆破汪汪聲。
+2. **極致的情境 UI 與情緒 UI 系統**：
+   - 雙方戰力抬頭顯示器會即時標註極致情緒狀態（例如：`傲視群雄`、`委屈巴巴`、`狂暴神犬`、`夾尾求饒`）。
+   - 主畫面背景色調會隨著優勢方（貓咪桃紅 / 狗狗琥珀橘）發生動態光暈偏移。
+   - Canvas 戰場上的「貓」與「狗」文字會隨著優勢動態膨脹、發光。
+3. **浮誇視覺與操作優化**：
+   - 每次碰撞對決時，畫面上會彈出漂浮的表情包（😾, 🐶, ⚡, 🐾）。
+   - 專為手機拇指單手操作最佳化的介面，同時支援電腦鍵盤（1, 2, 3, 方向鍵, Enter, R）。
